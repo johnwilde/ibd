@@ -22,9 +22,7 @@ f=open('bikes.bin','rb')
 oldset=pickle.load(f)
 f.close()
 
-# loop forever
-#while True:
-    # url that lists all blems
+# url that lists all blems
 url = "http://ibd.specialized.com/bb/SBCBBBlemsPicker.jsp"
 # set the headers like we are a browser,
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
@@ -37,10 +35,7 @@ jar.set('GOLD', cookie, domain='', path='')
 response = requests.get(url, headers=headers, cookies=jar)
 if response.status_code != 200:
     print("error making request")
-    # sleep for half hour
-    #time.sleep(60*30)
     sys.exit()
-    continue
 # parse the downloaded data and pull out just the names
 # this will stop working if the site structure changes
 soup = BeautifulSoup(response.text, "lxml")
@@ -86,6 +81,3 @@ oldset = newset
 f=open('bikes.bin','wb')
 pickle.dump(oldset, f)
 f.close()
-
-# sleep for half hour
-#time.sleep(60*30)
