@@ -55,8 +55,8 @@ if len(setdiff) > 0 and len(setdiff) < 100:
     msg = EmailMessage()
     msg.set_content(str(setdiff))
 
-    email = str(os.environ.get('MY_EMAIL'))
-    pword = str(os.environ.get('MY_PWORD'))
+    email = str(os.environ.get('EMAIL'))
+    pword = str(os.environ.get('PWORD'))
     msg['Subject'] = 'new stuff'
     msg['From'] = email
     msg['To'] = ['christianwparker@yahoo.com', 'johnwilde@gmail.com']
