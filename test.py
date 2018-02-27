@@ -16,12 +16,22 @@ import time
 
 # Import smtplib (to allow us to email)
 import smtplib
+import os
+from urllib import parse
+import psycopg2
 
-# restore last result set from disk
-f=open('bikes.bin','rb')
-oldset=pickle.load(f)
-f.close()
+parse.uses_netloc.append("postgres")
+db_url = parse.urlparse(os.environ["DATABASE_URL"])
+conn = psycopg2.connect( database=db_url.path[1:], user=db_url.username, password=db_url.password, host=db_url.hostname, port=db_url.port)
+#import pdb; pdb.set_trace()
 
+cur = conn.cursor()
+cur.execute("SELECT * FROM bikes1 order by id desc limit 1;")
+conn.commit()
+x=cur.fetchone()[1]
+oldset=pickle.loads(x)
+
+print("oldset length:", len(oldset))
 # url that lists all blems
 url = "http://ibd.specialized.com/bb/SBCBBBlemsPicker.jsp"
 # set the headers like we are a browser,
@@ -35,6 +45,7 @@ jar.set('GOLD', cookie, domain='', path='')
 response = requests.get(url, headers=headers, cookies=jar)
 if response.status_code != 200:
     print("error making request")
+    conn.close()
     sys.exit()
 # parse the downloaded data and pull out just the names
 # this will stop working if the site structure changes
@@ -42,6 +53,7 @@ soup = BeautifulSoup(response.text, "lxml")
 bikes = soup("td","price") 
 newset=set(map((lambda x: x.text), bikes))
 
+print("newset length:", len(newset))
 # find items that were not there last time we checked
 setdiff=newset-oldset
 
@@ -78,6 +90,9 @@ print(str(datetime.datetime.now()))
 oldset = newset
 
 # save to disk in case process dies
-f=open('bikes.bin','wb')
-pickle.dump(oldset, f)
-f.close()
+pickled=pickle.dumps(oldset)
+cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg.Binary(pickled))])
+conn.commit()
+cur.close()
+conn.close()
+
