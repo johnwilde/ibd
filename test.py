@@ -91,7 +91,7 @@ oldset = newset
 
 # save to disk in case process dies
 pickled=pickle.dumps(oldset)
-cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg.Binary(pickled))])
+cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg.Binary(pickled)])
 conn.commit()
 cur.close()
 conn.close()
