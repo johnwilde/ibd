@@ -23,7 +23,6 @@ import psycopg2
 parse.uses_netloc.append("postgres")
 db_url = parse.urlparse(os.environ["DATABASE_URL"])
 conn = psycopg2.connect( database=db_url.path[1:], user=db_url.username, password=db_url.password, host=db_url.hostname, port=db_url.port)
-#import pdb; pdb.set_trace()
 
 cur = conn.cursor()
 cur.execute("SELECT * FROM bikes1 order by id desc limit 1;")
@@ -42,7 +41,8 @@ cookie = str(os.environ.get('GOLD_COOKIE'))
 jar.set('GOLD', cookie, domain='', path='')
 
 # download all the blems
-response = requests.get(url, headers=headers, cookies=jar)
+response = requests.get(url, headers=headers, cookies=jar, allow_redirects=False)
+#import pdb; pdb.set_trace()
 if response.status_code != 200:
     print("error making request")
     conn.close()
@@ -91,7 +91,7 @@ oldset = newset
 
 # save to disk in case process dies
 pickled=pickle.dumps(oldset)
-cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg.Binary(pickled)])
+cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg2.Binary(pickled)])
 conn.commit()
 cur.close()
 conn.close()
