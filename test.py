@@ -1,68 +1,73 @@
-# Import requests (to download the page)
 import requests
 import datetime
 import pickle
 import os
 import sys
-
-# Import BeautifulSoup (to parse what we download)
 from bs4 import BeautifulSoup
-
-# Import the email modules we'll need
 from email.message import EmailMessage
-
-# Import Time (to add a delay between the times the scape runs)
 import time
-
-# Import smtplib (to allow us to email)
 import smtplib
-import os
 from urllib import parse
 import psycopg2
 
-parse.uses_netloc.append("postgres")
-db_url = parse.urlparse(os.environ["DATABASE_URL"])
-conn = psycopg2.connect( database=db_url.path[1:], user=db_url.username, password=db_url.password, host=db_url.hostname, port=db_url.port)
+def getCookie():
+    # login
+    url = "https://ebiz.specialized.com/bb/SBCBBcpLogin.jsp"
+    data = {
+            'custnbr' : str(os.environ.get('CUSTOMER_NUMBER')),
+            'username' : str(os.environ.get('USERNAME')),
+            'password' : str(os.environ.get('PASSWORD'))
+            }
+    response = requests.post(url, data = data)
+    if (response.history[0].status_code == 302):
+        cookie=response.history[0].cookies['GOLD']
+        return cookie
+    else:
+        print("error logging in")
+        print(str(datetime.datetime.now()))
+        sys.exit()
 
-cur = conn.cursor()
-cur.execute("SELECT * FROM bikes1 order by id desc limit 1;")
-conn.commit()
-x=cur.fetchone()[1]
-oldset=pickle.loads(x)
+def getConnection():
+    parse.uses_netloc.append("postgres")
+    db_url = parse.urlparse(os.environ["DATABASE_URL"])
+    conn = psycopg2.connect( database=db_url.path[1:], user=db_url.username, password=db_url.password, host=db_url.hostname, port=db_url.port)
+    return conn
 
-print("oldset length:", len(oldset))
-# url that lists all blems
-url = "http://ibd.specialized.com/bb/SBCBBBlemsPicker.jsp"
-# set the headers like we are a browser,
-headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
-# cookie to allow access to URL (i think this expires once a month)
-jar = requests.cookies.RequestsCookieJar()
-cookie = str(os.environ.get('GOLD_COOKIE'))
-jar.set('GOLD', cookie, domain='', path='')
-
-# uncomment to debug
-#import pdb; pdb.set_trace()
-# download all the blems
-response = requests.get(url, headers=headers, cookies=jar, allow_redirects=False)
-#import pdb; pdb.set_trace()
-if response.status_code != 200:
-    print("error making request")
-    print(str(datetime.datetime.now()))
+def getLastResults():
+    conn = getConnection()
+    # load last set of results from DB
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM bikes1 order by id desc limit 1;")
+    conn.commit()
+    x=cur.fetchone()[1]
     conn.close()
-    sys.exit()
-# parse the downloaded data and pull out just the names
-# this will stop working if the site structure changes
-soup = BeautifulSoup(response.text, "lxml")
-bikes = soup("td","price") 
-newset=set(map((lambda x: x.text), bikes))
+    oldset=pickle.loads(x)
+    return oldset
 
-print("newset length:", len(newset))
-# find items that were not there last time we checked
-setdiff=newset-oldset
+def getNewResults():
+    # url that lists all blems
+    url = "http://ibd.specialized.com/bb/SBCBBBlemsPicker.jsp"
+    # set the headers like we are a browser,
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+    jar = requests.cookies.RequestsCookieJar()
+    jar.set('GOLD', getCookie(), domain='', path='')
 
+    # download all the blems
+    response = requests.get(url, headers=headers, cookies=jar, allow_redirects=False)
+    #import pdb; pdb.set_trace()
+    if response.status_code != 200:
+        print("error making request")
+        print(str(datetime.datetime.now()))
+        sys.exit()
 
-# send an email if there are any new items
-if len(setdiff) > 0 and len(setdiff) < 100:
+    # parse the downloaded data and pull out just the names
+    # this will stop working if the site structure changes
+    soup = BeautifulSoup(response.text, "lxml")
+    bikes = soup("td","price") 
+    newset=set(map((lambda x: x.text), bikes))
+    return newset
+
+def sendEmail(setdiff):
     print(str(setdiff))
 
     msg = EmailMessage()
@@ -83,17 +88,33 @@ if len(setdiff) > 0 and len(setdiff) < 100:
     # Send the message via our own SMTP server.
     server.send_message(msg)
     server.quit()
+    return
 
-# print time so we know script is running
-print(str(datetime.datetime.now()))
+def saveResults(newset):
+    # save to disk in case process dies
+    pickled=pickle.dumps(newset)
+    conn = getConnection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg2.Binary(pickled)])
+    conn.commit()
+    cur.close()
+    conn.close()
+    return
 
-# save the last results
-oldset = newset
+if __name__ == "__main__":
+    # uncomment to debug
+    import pdb; pdb.set_trace()
+    oldset = getLastResults()
+    print("oldset length:", len(oldset))
+    newset = getNewResults()
+    print("newset length:", len(newset))
 
-# save to disk in case process dies
-pickled=pickle.dumps(oldset)
-cur.execute("INSERT INTO bikes1 (result) VALUES (%s)",[psycopg2.Binary(pickled)])
-conn.commit()
-cur.close()
-conn.close()
+    # find items that were not there last time we checked
+    setdiff=newset-oldset
 
+    # send an email if there are any new items
+    if len(setdiff) > 0 and len(setdiff) < 100:
+        sendEmail(setdiff)
+
+    # print time so we know script is running
+    print("success:", str(datetime.datetime.now()))
