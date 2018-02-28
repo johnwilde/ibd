@@ -91,7 +91,6 @@ def sendEmail(setdiff):
     return
 
 def saveResults(newset):
-    # save to disk in case process dies
     pickled=pickle.dumps(newset)
     conn = getConnection()
     cur = conn.cursor()
@@ -106,8 +105,11 @@ if __name__ == "__main__":
     #import pdb; pdb.set_trace()
     oldset = getLastResults()
     print("oldset length:", len(oldset))
+
     newset = getNewResults()
     print("newset length:", len(newset))
+
+    saveResults(newset)
 
     # find items that were not there last time we checked
     setdiff=newset-oldset
