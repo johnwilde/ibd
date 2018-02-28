@@ -40,11 +40,14 @@ jar = requests.cookies.RequestsCookieJar()
 cookie = str(os.environ.get('GOLD_COOKIE'))
 jar.set('GOLD', cookie, domain='', path='')
 
+# uncomment to debug
+#import pdb; pdb.set_trace()
 # download all the blems
 response = requests.get(url, headers=headers, cookies=jar, allow_redirects=False)
 #import pdb; pdb.set_trace()
 if response.status_code != 200:
     print("error making request")
+    print(str(datetime.datetime.now()))
     conn.close()
     sys.exit()
 # parse the downloaded data and pull out just the names
@@ -57,15 +60,13 @@ print("newset length:", len(newset))
 # find items that were not there last time we checked
 setdiff=newset-oldset
 
-# uncomment to debug
-#import pdb; pdb.set_trace()
 
 # send an email if there are any new items
 if len(setdiff) > 0 and len(setdiff) < 100:
     print(str(setdiff))
 
     msg = EmailMessage()
-    msg.set_content(str(setdiff))
+    msg.set_content("\n".join(setdiff))
 
     email = str(os.environ.get('EMAIL'))
     pword = str(os.environ.get('PWORD'))
