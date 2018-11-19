@@ -12,7 +12,7 @@ import psycopg2
 
 def getCookie():
     # login
-    url = "https://ebiz.specialized.com/bb/SBCBBcpLogin.jsp"
+    url = "https://ibd.specialized.com/bb/SBCBBcpLogin.jsp"
     data = {
             'custnbr' : str(os.environ.get('CUSTOMER_NUMBER')),
             'username' : str(os.environ.get('USERNAME')),
@@ -53,7 +53,7 @@ def getNewResults():
     jar.set('GOLD', getCookie(), domain='', path='')
 
     # download all the blems
-    response = requests.get(url, headers=headers, cookies=jar, allow_redirects=False)
+    response = requests.get(url, headers=headers, cookies=jar, allow_redirects=True)
     #import pdb; pdb.set_trace()
     if response.status_code != 200:
         print("error making request")
