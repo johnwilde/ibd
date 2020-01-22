@@ -102,9 +102,9 @@ def saveResults(newset):
 
 if __name__ == "__main__":
     # uncomment to debug
-    #import pdb; pdb.set_trace()
-#    oldset = getLastResults()
-#    print("oldset length:", len(oldset))
+    import pdb; pdb.set_trace()
+    oldset = getLastResults()
+    print("oldset length:", len(oldset))
 
     newset = getNewResults()
     print("newset length:", len(newset))
